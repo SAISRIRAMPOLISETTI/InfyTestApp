@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">InfyTestApp</string>
+    <string name="welcome_msg">Infosys Test Application!</string>
+    <string name="speed_alert_title">Speed Alert!</string>
+    <string name="speed_alert_sub_title">Maintain Speed below %s miles/h</string>
+    <string name="car_speed_text">Car Speed %d miles/h</string>
+</resources>
