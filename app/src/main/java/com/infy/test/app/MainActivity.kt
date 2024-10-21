@@ -4,21 +4,26 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.os.Build
 import android.os.Bundle
+import android.os.IBinder
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.app.NotificationCompat
+import com.infy.test.app.service.CarSpeedService
 import com.infy.test.app.simulation.VehicleSpeedModel
 import com.infy.test.app.simulation.VehicleSpeedModelListener
 import com.infy.test.app.simulation.VehicleSpeedSimulator
 
 class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
 
+    private var carId: String? = null
     private val tag: String = MainActivity::class.java.getSimpleName()
 
     private var vehicleSpeedLimit = 80
@@ -35,6 +40,24 @@ class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
 
     private var carManager: CARManager? = null
 
+    private var carSpeedService: ISpeedAidlInterface? = null
+
+    private var isBound = false
+
+    private val mServiceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            carSpeedService = ISpeedAidlInterface.Stub.asInterface(service)
+            isBound = true
+            vehicleSpeed = carSpeedService?.carSpeed ?: 0
+            validateVehicleSpeed()
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            isBound = false
+            carSpeedService = null
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -50,13 +73,10 @@ class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
         // For Step-3 Assumed Current Vehicle Speed to local variable[i.e vehicleSpeed].
         // Vehicle Speed keeps changing based on our vehicle speed.
 
-        carManager?.apply {
-            vehicleSpeedLimit = getVehicleSpeedLimit(
-                this.authenticateCarRenter(
-                    "user_name",
-                    "pass_word"
-                )
-            )
+        carId = carManager?.authenticateCarRenter("user_name", "pass_word")
+
+        vehicleSpeedLimit = carId.let {
+            carManager?.getVehicleSpeedLimit(it) ?: 0
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -66,7 +86,22 @@ class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
         if (mNotification == null) mNotification = createNotification()
 
         // Starting Car/Vehicle
-        VehicleSpeedSimulator(this).startVehicle()
+//        VehicleSpeedSimulator(this).startVehicle()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        Intent(this, CarSpeedService::class.java).also { intent ->
+            bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE)
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (isBound) {
+            unbindService(mServiceConnection)
+            isBound = false
+        }
     }
 
     private fun validateVehicleSpeed() {
@@ -75,7 +110,9 @@ class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
             showSpeedAlertWarningToRenter()
             // Notify fleet company to specific car[Using CAR unique ID] crossed speed limit exceeded.
             // Call required API to notify Fleet company.
-            carManager?.updateVehicleSpeedLimitExceeded()
+            carId?.let {
+                carManager?.updateVehicleSpeedLimitExceeded(it)
+            }
         }
     }
 
@@ -108,7 +145,7 @@ class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
             .setContentText(
                 String.format(
                     getString(R.string.speed_alert_sub_title),
-                    vehicleSpeedLimit
+                    vehicleSpeedLimit.toString()
                 )
             )
             .setSmallIcon(R.mipmap.ic_launcher)
