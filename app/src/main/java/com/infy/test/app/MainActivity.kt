@@ -19,16 +19,15 @@ import androidx.core.app.NotificationCompat
 import com.infy.test.app.service.CarSpeedService
 import com.infy.test.app.simulation.VehicleSpeedModel
 import com.infy.test.app.simulation.VehicleSpeedModelListener
-import com.infy.test.app.simulation.VehicleSpeedSimulator
 
 class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
 
     private var carId: String? = null
     private val tag: String = MainActivity::class.java.getSimpleName()
 
+    // Use MutableLiveData and LiveData variables to get vehicle speed changes from vehicle.
     private var vehicleSpeedLimit = 80
     private var vehicleSpeed = 90
-    // Use MutableLiveData and LiveData variables to get vehicle speed changes from vehicle.
 
     private var mNotificationManager: NotificationManager? = null
     private var mNotification: Notification? = null
@@ -44,10 +43,13 @@ class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
 
     private var isBound = false
 
+    // ServiceConnection to manage the connection lifecycle
     private val mServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            // Cast the binder object to the AIDL interface
             carSpeedService = ISpeedAidlInterface.Stub.asInterface(service)
             isBound = true
+            // Fetch data from the service
             vehicleSpeed = carSpeedService?.carSpeed ?: 0
             validateVehicleSpeed()
         }
@@ -67,22 +69,24 @@ class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
         if (carManager == null) carManager = CARManager()
 
         // 1. Connect/Login to Fleet Company Server.
+        // For Step-1 sending fleet entered user name and encrypted password for authentication.
+        carId = carManager?.authenticateCarRenter("user_name", "######")
         // 2. Get current vehicle maximum speed limit[By using Unique ID of CAR] from Fleet.
         // For Step-2 Assumed Current Vehicle Speed Limit to some static value[i.e vehicleSpeedLimit].
         // 3. Get current vehicle speed from CAN/Specific API of our vehicle.
         // For Step-3 Assumed Current Vehicle Speed to local variable[i.e vehicleSpeed].
         // Vehicle Speed keeps changing based on our vehicle speed.
 
-        carId = carManager?.authenticateCarRenter("user_name", "pass_word")
-
         vehicleSpeedLimit = carId.let {
             carManager?.getVehicleSpeedLimit(it) ?: 0
         }
 
+        // Setting up a notification channel for speed limit alerts.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             createNotificationChannel()
         }
 
+        // Generating a notification for speed limit alerts.
         if (mNotification == null) mNotification = createNotification()
 
         // Starting Car/Vehicle
@@ -91,6 +95,7 @@ class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
 
     override fun onStart() {
         super.onStart()
+        // Bind to the service.
         Intent(this, CarSpeedService::class.java).also { intent ->
             bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE)
         }
@@ -98,12 +103,14 @@ class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
 
     override fun onStop() {
         super.onStop()
+        // UnBind to the service.
         if (isBound) {
             unbindService(mServiceConnection)
             isBound = false
         }
     }
 
+    // Method to validate car current speed.
     private fun validateVehicleSpeed() {
         if (vehicleSpeed > vehicleSpeedLimit) {
             // Notifying renter to maintain below specified vehicle speed limit.
@@ -116,10 +123,12 @@ class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
         }
     }
 
+    // Method to Invoke Notification API for Displaying Speed Limit Exceeded Alert
     private fun showSpeedAlertWarningToRenter() {
         mNotificationManager?.notify(notificationId, mNotification)
     }
 
+    // Method to create Notification Channel for displaying notification.
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannel() {
         val mNotificationChannel = NotificationChannel(
@@ -134,10 +143,11 @@ class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
         mNotificationManager?.createNotificationChannel(mNotificationChannel)
     }
 
+    // Method to Construct Notification and Required Fields for Displaying Speed Limit Alert.
     private fun createNotification(): Notification {
         val notificationIntent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
-            this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT
+            this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE
         )
 
         return NotificationCompat.Builder(this, channelId)

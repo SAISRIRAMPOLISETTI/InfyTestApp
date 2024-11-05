@@ -1,21 +1,16 @@
 package com.infy.test.app.io
 
-class SpeedLimitExporterFactory {
+// SpeedLimitExporterFactory class is responsible for managing communication channels.
+class SpeedLimitExporterFactory(private var iSpeedLimitExporter: ISpeedLimitExporter?) {
 
-    companion object {
-        private var speedLimitExporter: ISpeedLimitExporter? = null
-
-        fun getSpeedLimitExporter(): ISpeedLimitExporter {
-            if (speedLimitExporter == null) {
-                speedLimitExporter = FirebaseSpeedLimitExporter()
-//                speedLimitExporter = AWSSpeedLimitExporter()
-            }
-            return speedLimitExporter as ISpeedLimitExporter
-        }
+    // Method to update the communication channel to a new instance of ISpeedLimitExporter
+    fun setSpeedLimitCommunicationChannel(channel: ISpeedLimitExporter) {
+        iSpeedLimitExporter = channel
     }
 
-    fun initConnection() {
-        getSpeedLimitExporter()
+    // Method to notify the communication channel when a car exceeds the speed limit
+    fun updateFleetAPIForSpeedLimitExceeds(carID: String?) {
+        iSpeedLimitExporter?.notifySpeedLimitExceeded(carID)
     }
 
 }
