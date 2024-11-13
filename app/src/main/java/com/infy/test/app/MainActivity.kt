@@ -11,19 +11,14 @@ import android.content.ServiceConnection
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.app.NotificationCompat
 import com.infy.test.app.service.CarSpeedService
-import com.infy.test.app.simulation.VehicleSpeedModel
-import com.infy.test.app.simulation.VehicleSpeedModelListener
 
-class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
+class MainActivity : AppCompatActivity() {
 
     private var carId: String? = null
-    private val tag: String = MainActivity::class.java.getSimpleName()
 
     // Use MutableLiveData and LiveData variables to get vehicle speed changes from vehicle.
     private var vehicleSpeedLimit = 80
@@ -34,8 +29,6 @@ class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
     private val channelId = "InfosysSpeedAlertChannelID"
     private val notificationId = 1234
     private val channelName = "InfosysSpeedAlertNotificationChannelName"
-
-    private var tvCarSpeed: AppCompatTextView? = null
 
     private var carManager: CARManager? = null
 
@@ -64,8 +57,6 @@ class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        tvCarSpeed = findViewById(R.id.tv_car_speed)
-
         if (carManager == null) carManager = CARManager()
 
         // 1. Connect/Login to Fleet Company Server.
@@ -88,9 +79,6 @@ class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
 
         // Generating a notification for speed limit alerts.
         if (mNotification == null) mNotification = createNotification()
-
-        // Starting Car/Vehicle
-//        VehicleSpeedSimulator(this).startVehicle()
     }
 
     override fun onStart() {
@@ -163,15 +151,5 @@ class MainActivity : AppCompatActivity(), VehicleSpeedModelListener {
             .setAutoCancel(true)
             .setTimeoutAfter(5000)
             .build()
-    }
-
-    override fun updateVehicleSpeedModel(vehicleSpeedModel: VehicleSpeedModel) {
-        Log.d(tag, "updateVehicleSpeedModel()...${vehicleSpeedModel.carSpeed}")
-        vehicleSpeed = vehicleSpeedModel.carSpeed
-        runOnUiThread {
-            tvCarSpeed?.text =
-                String.format(getString(R.string.car_speed_text), vehicleSpeedModel.carSpeed)
-        }
-        validateVehicleSpeed()
     }
 }

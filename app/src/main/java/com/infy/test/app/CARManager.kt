@@ -1,7 +1,5 @@
 package com.infy.test.app
 
-import com.infy.test.app.io.AWSSpeedLimitExporter
-import com.infy.test.app.io.FirebaseSpeedLimitExporter
 import com.infy.test.app.io.SpeedLimitExporterFactory
 
 /*
@@ -14,13 +12,9 @@ class CARManager {
     private var speedLimitExporter: SpeedLimitExporterFactory? = null
 
     init {
-        // Initializes the default communication channel to Firebase.
-        speedLimitExporter = SpeedLimitExporterFactory(FirebaseSpeedLimitExporter())
-    }
-
-    // Method to change the communication channel from Firebase to AWS or other services.
-    fun switchToAWSChannel() {
-        speedLimitExporter?.setSpeedLimitCommunicationChannel(AWSSpeedLimitExporter())
+        // SpeedLimitExporterFactory is the common communication channel for Firebase or AWS.
+        // SpeedLimitExporterFactory returns the communication channel either Firebase or AWS.
+        speedLimitExporter = SpeedLimitExporterFactory().get()
     }
 
     // Method to authenticate the renter's username and password provided by the fleet company.
@@ -47,5 +41,4 @@ class CARManager {
         // Calls the fleet company's main API to notify that a specific car has exceeded the speed limit.
         speedLimitExporter?.updateFleetAPIForSpeedLimitExceeds(carId)
     }
-
 }
